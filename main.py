@@ -20,11 +20,29 @@ class GoogleSheetGUI:
         self.style = ttk.Style()
         self.style.theme_use("clam")  # Choose a theme (e.g., "clam", "alt", "default")
         
-        # Create and pack main widgets
-        self.label = ttk.Label(master, text="Document Manager by jel", font=("Helvetica", 16, "bold"))
+        # Create a notebook
+        self.notebook = ttk.Notebook(master)
+        self.notebook.grid(row=0, column=0, sticky="nsew")
+
+        # Create tabs
+        self.tab1 = ttk.Frame(self.notebook)
+        self.tab2 = ttk.Frame(self.notebook)
+
+        self.notebook.add(self.tab1, text="Document manager")
+        self.notebook.add(self.tab2, text="Invoice manager")
+
+        # Call the method to populate Tab 1
+        self.populate_daily_note()
+
+        # Call the method to populate Tab 2
+        self.populate_invoice()
+
+    def populate_daily_note(self):
+        # Populate Tab 1 with widgets
+        self.label = ttk.Label(self.tab1, text="Document Manager by jel", font=("Helvetica", 16, "bold"))
         self.label.grid(row=0, column=0, columnspan=2, pady=10)
 
-        self.tree = ttk.Treeview(master, columns=('Year', 'Month', 'total_amount'), show='headings', style="Treeview")
+        self.tree = ttk.Treeview(self.tab1, columns=('Year', 'Month', 'total_amount'), show='headings', style="Treeview")
         self.tree.heading('Year', text='Year')
         self.tree.heading('Month', text='Month')
         self.tree.heading('total_amount', text='Total Amount')
@@ -32,9 +50,9 @@ class GoogleSheetGUI:
 
         self.display_df_daily_note()
 
-        self.tree.bind("<Double-1>", self.on_double_click)
+        self.tree.bind("<Double-1>", self.on_double_click_to_doc)
 
-        self.button_frame = ttk.Frame(master)
+        self.button_frame = ttk.Frame(self.tab1)
         self.button_frame.grid(row=2, column=0, columnspan=2, pady=10)
 
         #self.Add_daily_note_button = ttk.Button(self.button_frame, text="ADD", command=self.add_window)
@@ -43,331 +61,119 @@ class GoogleSheetGUI:
         self.refresh_button = ttk.Button(self.button_frame, text="Refresh", command=self.refresh_data)
         self.refresh_button.grid(row=0, column=1, padx=5)
 
-    def add_window(self):
-        self.add_window = tk.Toplevel(self.master)
-        self.add_window.title(f"Add Daily Note")
-
-        def generate_random_string():
-            return ''.join(random.choices(string.ascii_letters + string.digits, k=8))
-
-        def get_customer_names():
-            return self.df_company['Branch office'].unique().tolist()
-
-        DN_ID_input = generate_random_string()
+    def populate_invoice(self):
         
-        label_date = ttk.Label(self.add_window, text="Date:")
-        label_date.grid(row=0, column=0, padx=5, pady=5)
+        label_tab2 = ttk.Label(self.tab2, text="Invoice Manager by jel")
+        label_tab2.grid(row=0, column=0, columnspan=2, pady=10)
 
-        # Use Calendar widget for date selection
-        cal = Calendar(self.add_window, selectmode="day", date_pattern="yyyy-mm-dd")
-        cal.grid(row=0, column=1, padx=5, pady=5)
-
-        label_customer = ttk.Label(self.add_window, text="Customer:")
-        label_customer.grid(row=1, column=0, padx=5, pady=5)
-
-        # Dropdown menu for customer selection
-        customer_names = get_customer_names()
-        selected_customer = tk.StringVar()
-        customer_combobox = ttk.Combobox(self.add_window, textvariable=selected_customer, values=customer_names)
-        customer_combobox.grid(row=1, column=1, padx=0, pady=5, ipadx = 40)
-        customer_combobox.current(0)
-
-        label_vat = ttk.Label(self.add_window, text="VAT Statute:")
-        label_vat.grid(row=2, column=0, padx=5, pady=5)
-        vat_combobox = ttk.Combobox(self.add_window, values=["True", "False"])
-        vat_combobox.grid(row=2, column=1, padx=0, pady=5)
-        vat_combobox.current(0)
-
-        label_po_file_path = ttk.Label(self.add_window, text="PO file:")
-        label_po_file_path.grid(row=3, column=0, padx=5, pady=5)
-
-        def browse_po_file():
-            file_path = tkinter.filedialog.askopenfilename(filetypes=[("PDF files", "*.pdf")])
-            if file_path:
-                entry_po_file_path.delete(0, tk.END)  # Clear any existing text in the entry field
-                entry_po_file_path.insert(0, file_path)  # Insert the selected file path into the entry field
-
-
-        entry_po_file_path = ttk.Entry(self.add_window)
-        entry_po_file_path.grid(row=3, column=1, padx=0, pady=5, ipadx = 40)
-
-        button_po_browse = ttk.Button(self.add_window, text="Browse", command=browse_po_file)
-        button_po_browse.grid(row=3, column=2, padx=5, pady=5)
-
-        label_invioce_file_path = ttk.Label(self.add_window, text="Invoice file:")
-        label_invioce_file_path.grid(row=4, column=0, padx=5, pady=5)
-
-        def browse_invoice_file():
-            file_path = tkinter.filedialog.askopenfilename(filetypes=[("PDF files", "*.pdf")])
-            entry_invoice_file_path.delete(0, tk.END)  # Clear any existing text in the entry field
-            entry_invoice_file_path.insert(0, file_path)  # Insert the selected file path into the entry field
-
-        entry_invoice_file_path = ttk.Entry(self.add_window)
-        entry_invoice_file_path.grid(row=4, column=1, padx=0, pady=5, ipadx = 40)
-
-        button_invoice_browse = ttk.Button(self.add_window, text="Browse", command=browse_invoice_file)
-        button_invoice_browse.grid(row=4, column=2, padx=5, pady=5)
-
-        def call_product():
-            filtered_data = self.df_products[(self.df_products['Detail'] == "Available")]
-            products_data = []
-            for index, row in filtered_data.iterrows():
-                Product_ID = row["Product_ID"]
-                Description = row["Description"]
-                PricePerunit = row["Price/unit"]
-                products_data.append((Product_ID, Description, PricePerunit))
-            return products_data
-
-        Product_data = call_product()
-        running_num = 1
-
-        product_frame = ttk.Frame(self.add_window)
-        product_frame.grid(row=5, column=0, columnspan=2, padx=5, pady=5, sticky="ew")
-
-        label_product_name = ttk.Label(product_frame, text="Product name")
-        label_product_name.grid(row=0, column=0, padx=0, pady=5)
-
-        label_price_product = ttk.Label(product_frame, text="Product price")
-        label_price_product.grid(row=0, column=1, padx=5, pady=5)
-
-        label_input_qty = ttk.Label(product_frame, text="Input qty")
-        label_input_qty.grid(row=0, column=2, padx=5, pady=5)
-
-        for product in Product_data:
-            Product_ID, Description, PricePerunit = product
-
-            label_desc = ttk.Label(product_frame, text=Description)
-            label_desc.grid(row=running_num, column=0, padx=0, pady=5)
-
-            label_price = ttk.Label(product_frame, text=PricePerunit)
-            label_price.grid(row=running_num, column=1, padx=5, pady=5)
-
-            entry_qty = ttk.Entry(product_frame)
-            entry_qty.grid(row=running_num, column=2, padx=0, pady=5, ipadx = 10)
-
-            running_num += 1
-
-        def submit():
-            selected_customer = customer_combobox.get()
-            selected_date = cal.get_date()
-            selected_vat = vat_combobox.get()
-            selected_file_po_path = entry_po_file_path.get()
-            selected_file_invoice_path = entry_invoice_file_path.get()
-            
-
-            if selected_date == "":
-                messagebox.showerror("Error", "Please select a date.")
-                return
-            if selected_customer == "":
-                messagebox.showerror("Error", "Please select a customer.")
-                return
-            if selected_vat == "":
-                messagebox.showerror("Error", "Please select a VAT.")
-                return
-            if selected_file_po_path == "":
-                messagebox.showerror("Error", "Please enter a PO file.")
-                return
-            if selected_file_invoice_path == "":
-                messagebox.showerror("Error", "Please enter an Invoice file.")
-                return
-            
-            def DN_No_cal(selected_customer,selected_date):
-
-                if  selected_customer == "DON DON DONKI Thonglor":
-                    dn_no = "DN" + "01"
-                elif selected_customer == "DON DON DONKI MBK Center":
-                    dn_no = "DN" + "02"
-                elif selected_customer == "DON DON DONKI Seacon Square":
-                    dn_no = "DN" + "03"
-                elif selected_customer == "DON DON DONKI Seacon Bangkae":
-                    dn_no = "DN" + "04"
-                elif selected_customer == "DON DON DONKI J-park Sriracha":
-                    dn_no = "DN" + "05"
-                elif selected_customer == "DON DON DONKI Thaniya Plaza":
-                    dn_no = "DN" + "06"
-                elif selected_customer == "DON DON DONKI Fashion lsland":
-                    dn_no = "DN" + "07"
-                elif selected_customer == "DON DON DONKI The Mall Bangkapi":
-                    dn_no = "DN" + "08"
-                else:
-                    messagebox.showerror("Error", "Please Contact to Jel.")
-                    return
-                dn_no = dn_no + "-" +selected_date
-                return dn_no
-
-            quantities = []
-            for product_frame in self.add_window.winfo_children():
-                if isinstance(product_frame, ttk.Frame):
-                    for widget in product_frame.winfo_children():
-                        if isinstance(widget, ttk.Entry):
-                            quantity_str = widget.get()
-                            try:
-                                if not quantity_str == "":
-                                    quantity = int(quantity_str)
-                                    quantities.append(quantity)
-
-                                else:
-                                    quantities.append(0)
-                            except ValueError:
-                                messagebox.showerror("Error", "Invalid quantity. Please enter a valid integer.")
-                                return
-
-
-            
-            DN_No = DN_No_cal(selected_customer, selected_date)
-            
-            
-            self.add_window.withdraw()  # Hide the self.add_window
-            self.comfrim_add(DN_ID_input, DN_No, selected_date,selected_customer, selected_vat, selected_file_po_path, selected_file_invoice_path, Product_data, quantities)
-
-
-
-        submit_button = ttk.Button(self.add_window, text="Submit", command=submit)
-        submit_button.grid(row=6, columnspan=2, padx=5, pady=10)
-
-    def comfrim_add(self, DN_ID, DN_No, Date, Customer, Vat_staute, File_PO_path, Invoice_number, Product_data, quantities):
-        self.comfrim_add_window = tk.Toplevel(self.master)
-        self.comfrim_add_window.title(f"Confirm")
-
-        # Frame to contain the information
-        info_frame = ttk.Frame(self.comfrim_add_window)
-        info_frame.pack(padx=20, pady=20)
-
-        # Display DN ID
-        label_dn_id = ttk.Label(info_frame, text=f"DN ID: {DN_ID}")
-        label_dn_id.grid(row=0, column=0, sticky="w")
-
-        # Display DN Number
-        label_dn_no = ttk.Label(info_frame, text=f"DN Number: {DN_No}")
-        label_dn_no.grid(row=1, column=0, sticky="w")
-
-        # Display Date
-        label_date = ttk.Label(info_frame, text=f"Date: {Date}")
-        label_date.grid(row=2, column=0, sticky="w")
-
-        # Display Customer
-        label_customer = ttk.Label(info_frame, text=f"Customer: {Customer}")
-        label_customer.grid(row=3, column=0, sticky="w")
-
-        # Display VAT Statute
-        label_vat = ttk.Label(info_frame, text=f"VAT Statute: {Vat_staute}")
-        label_vat.grid(row=4, column=0, sticky="w")
-
-        # Display PO File Path
-        label_po_path = ttk.Label(info_frame, text=f"PO File Path: {File_PO_path}")
-        label_po_path.grid(row=5, column=0, sticky="w")
-
-        # Display Invoice Number
-        label_invoice_no = ttk.Label(info_frame, text=f"Invoice Number: {Invoice_number}")
-        label_invoice_no.grid(row=6, column=0, sticky="w")
-
-        df = pd.DataFrame(Product_data, columns=['Product_ID', 'Description', 'Price_per_unit'])
-        df['Quantity'] = quantities
-        df['Total Item Cost'] = df['Quantity'].astype(int) * df['Price_per_unit'].astype(int)
-        df['DN_ID'] = DN_ID
-
-        filtered_data = df[(df['Total Item Cost'] != 0 )]
+        self.tabel_invoice = ttk.Treeview(self.tab2, columns=('id_inv','no_inv', 'Date', 'name', 'total_amount'), show='headings', style="Treeview")
+        self.tabel_invoice.heading('id_inv', text='ID')
+        self.tabel_invoice.heading('no_inv', text='Number Invoice')
+        self.tabel_invoice.heading('Date', text='Date')
+        self.tabel_invoice.heading('name', text='Name')
+        self.tabel_invoice.heading('total_amount', text='Total Amount')
+        self.tabel_invoice.grid(row=1, column=0, columnspan=1, padx=10, pady=10, sticky="nsew")
         
-        DN_Item_ID_list = []
-        for _ in range(len(filtered_data)):
-            DN_Item_ID = ''.join(random.choices(string.ascii_letters + string.digits, k=8))
-            DN_Item_ID_list.append(DN_Item_ID)
-        filtered_data['DN_Item_ID'] = DN_Item_ID_list
-        df_product_cleaned = filtered_data[['DN_Item_ID', 'DN_ID', 'Product_ID', 'Description',
-                                                        'Price_per_unit', 'Quantity', 'Total Item Cost']]
+        self.display_df_invoice()
+        self.tabel_invoice.bind("<Double-1>", self.on_double_click_invoice)
 
-        drop_list = ['DN_Item_ID', 'DN_ID']
-        df_product_cleaned_for_show = df_product_cleaned.drop(columns=drop_list)
+        self.refresh_button = ttk.Button(self.tab2, text="Refresh", command=self.refresh_data)
+        self.refresh_button.grid(row=2, column=0, padx=5)
 
-        table_frame = ttk.Frame(self.comfrim_add_window)
-        table_frame.pack(padx=20, pady=10)
+    def on_double_click_invoice(self, event):
+
+        def open_sum_invoice(filename):
+            opreate_os.open_sum_invoice_file(filename)
+
+        def delete_sum_invoice(filename):
+            opreate_os.delete_sum_invoice_file(filename)
+
+        def create_sum_invoice(filename, main_data, sub_data):
+            opreate_os.create_sum_invoice(filename, main_data, sub_data)
+
+
+        item = self.tabel_invoice.selection()[0]
+        id_inv = self.tabel_invoice.item(item, "values")[0]
+
+        matching_rows = self.df_invoice.loc[self.df_invoice['id_inv'] == id_inv]
+        no_inv = matching_rows["no_inv"].values[0]
+        date_inv = pd.Timestamp(matching_rows["Date"].values[0]).strftime("%d/%m/%Y")
+        total_price = matching_rows["total_price"].values[0]
+        vat_price = matching_rows["vat_price"].values[0]
+        total_amount = matching_rows["total_amount"].values[0]
+
+        id_customer = matching_rows["id_company"].values[0]
+        customer_rows = self.df_company.loc[self.df_company['id_company'] == id_customer]
+        company = customer_rows["name"].values[0]
+        company_address = customer_rows["address"].values[0]
+        main_office = customer_rows["branch_office"].values[0]
+        main_address = customer_rows["delivery_address"].values[0]
+        tax = customer_rows["tax_number"].values[0]
+
+        text_show = "Date: " + date_inv + "\n"
+        text_show += "Office: " + company + "\n"
+        text_show += "Total Price: " + total_price + "\n"
+        text_show += "Vat Price: " + vat_price + "\n"
+        text_show += "Total Amount: " + total_amount + "\n"
+
+        filtered_data = self.invoice_items[(self.invoice_items['id_inv'] == id_inv)]
+        invoice_merged_df = pd.merge(filtered_data, self.df_daily_note, on='id_dn', how='inner')
+        invoice_merged_df = invoice_merged_df[['id_item_inv', 'Date', 'no_dn', 'id_inv_y','id_po', 'qty', 'total_price_y']]
+
+        main_data = [company, company_address, main_office, main_address, tax, no_inv, date_inv, total_price, vat_price, total_amount]
+        sub_data = invoice_merged_df
         
-        tree = ttk.Treeview(table_frame)
-        tree["columns"] = list(df_product_cleaned_for_show.columns)
-        tree["show"] = "headings"
+        new_window_invoice = tk.Toplevel(self.tab2)
+        new_window_invoice.title(f"Details for {id_inv}")
 
-        for column in df_product_cleaned_for_show.columns:
-            tree.heading(column, text=column)
+        df_daily_label = ttk.Label(new_window_invoice, text=str(no_inv))
+        df_daily_label.grid(row=0, column=0, pady=10)
+
+        df_daily_text_label = ttk.Label(new_window_invoice, text=text_show)
+        df_daily_text_label.grid(row=1, column=0, pady=10)
+
+        #Create and pack widgets
+        self.group_tree_invoice = ttk.Treeview(new_window_invoice, columns=('id_item_inv', 'Date', 'no_dn', 'id_inv_y','id_po', 'qty', 'total_price_y'), show='headings', style="Treeview")
+        self.group_tree_invoice.heading('id_item_inv', text='ID')
+        self.group_tree_invoice.heading('Date', text='Date')
+        self.group_tree_invoice.heading('no_dn', text='DN number')
+        self.group_tree_invoice.heading('id_inv_y', text='INV number')
+        self.group_tree_invoice.heading('id_po', text='PO number')
+        self.group_tree_invoice.heading('qty', text='quantity')
+        self.group_tree_invoice.heading('total_price_y', text='Total Price')
+        self.group_tree_invoice.grid(row=3, column=0, padx=20, pady=10, sticky='nsew')
+        for index, row in invoice_merged_df.iterrows():
+            self.group_tree_invoice.insert('', 'end', values=(row['id_item_inv'], row['Date'], row['no_dn'], row['id_inv_y'], row['id_po'], row['qty'], row['total_price_y']))
+
+        upload_frame = ttk.Frame(new_window_invoice)
+        upload_frame.grid(row=2, column=0, pady=5)
+
+        open_button = ttk.Button(upload_frame, text="Open Invoice", command=lambda: open_sum_invoice(str(no_inv))) #
+        open_button.grid(row=0, column=0, padx=5)
+
+        create_button = ttk.Button(upload_frame, text="Create Invoice", command=lambda: create_sum_invoice(no_inv, main_data, sub_data)) 
+        create_button.grid(row=0, column=1, padx=5)
+
+        delete_button = ttk.Button(upload_frame, text="Delete Invoice", command=lambda: delete_sum_invoice(str(no_inv))) #command=lambda: delete_sum_invoice(entry_po_file_path)
+        delete_button.grid(row=0, column=2, padx=5)
+
+    def display_df_invoice(self):
+        #self.df_daily_note, self.df_aily_note_item = google_sheet_manager.read_dynamic_data()
         
-        for index, row in df_product_cleaned_for_show.iterrows():
-            tree.insert("", "end", values=list(row))
-        
-        tree.pack(expand=True, fill=tk.BOTH)
-
-
-        # Calculate the total cost
-        total_cost = df_product_cleaned['Total Item Cost'].sum()
-
-        total_cost = df_product_cleaned['Total Item Cost'].sum()
-        vat_total_cost = total_cost * 0.07 if Vat_staute == "True" else 0
-        total_amount = total_cost + vat_total_cost
-
-        # Format the values with two decimal places
-        total_cost_str = f"฿{total_cost:,.2f}"
-        vat_total_cost_str = f"฿{vat_total_cost:,.2f}"
-        total_amount_str = f"฿{total_amount:,.2f}"
-
-        # Display total cost, VAT cost, and total amount
-        label_total_cost = ttk.Label(info_frame, text=f"Total Cost: {total_cost_str}")
-        label_total_cost.grid(row=7, column=0, sticky="w")
-
-        label_vat_total_cost = ttk.Label(info_frame, text=f"Vat Cost: {vat_total_cost_str}")
-        label_vat_total_cost.grid(row=8, column=0, sticky="w")
-
-        label_total_amount = ttk.Label(info_frame, text=f"Total Amount: {total_amount_str}")
-        label_total_amount.grid(row=9, column=0, sticky="w")
-        
-        def customer_to_id(selected_date):
-                filtered_data = self.df_company[(self.df_company['Branch office'] == selected_date)]
-                id_customer = filtered_data["ID_Company"].values[0]
-                return id_customer
-        id_company = customer_to_id(Customer)
-
-        # Button Frame
-        self.button_frame = ttk.Frame(self.comfrim_add_window)
-        self.button_frame.pack(pady=20)
+        self.df_invoice, self.invoice_items = google_sheet_manager.read_invoice()
+        self.df_invoice['Date'] = pd.to_datetime(self.df_invoice['Date'])
         
 
-        # Confirm Button
-        confirm_button = ttk.Button(self.button_frame, text="Confirm", command=lambda: self.comfrim_add_confirm(DN_ID, DN_No, Date, id_company, Vat_staute, File_PO_path, Invoice_number, df_product_cleaned))
-        confirm_button.grid(row=0, column=0, padx=10)
+        self.invoice_merged_df = pd.merge(self.df_invoice, self.df_company, on='id_company', how='left')
 
-        # Back Button
-        back_button = ttk.Button(self.button_frame, text="Back", command=self.comfrim_add_back)
-        back_button.grid(row=0, column=1, padx=10)
-
-    def comfrim_add_confirm(self, id_dn, dn_no, date, id_company, vat, File_PO_path, Invoice_number, df_product):
-        
-        try:
-            PO_name_file = dn_no.replace("DN", "PO")
-            IV_name_file = dn_no.replace("DN", "IV")
-
-            opreate_os.copy_addnew_to_po(File_PO_path, PO_name_file)
-            inv_name= opreate_os.copy_addnew_to_inv(Invoice_number)
-
-            google_sheet_manager.add_data_daily_note(id_dn, dn_no, date, str(id_company), vat, inv_name, PO_name_file)
-
-            
-            for index, row in df_product.iterrows():
-                google_sheet_manager.add_data_daily_note_items(row["DN_ID"], row["Product_ID"], row["Quantity"], row["Price_per_unit"])
-
-
-            self.add_window.destroy()
-            self.comfrim_add_window.destroy()
-
-            messagebox.showinfo("Successful", "Data added successfully to Google Sheets.")
-        except Exception as e:
-            messagebox.showerror("Error", f"An unexpected error occurred: {e}")
-            
-    def comfrim_add_back(self):
-        self.add_window.deiconify()
-        self.comfrim_add_window.destroy()
+        for index, row in self.invoice_merged_df.iterrows():
+            self.tabel_invoice.insert('', 'end', values=(row['id_inv'],row['no_inv'], row['Date'], row['name'], row['total_amount']))
 
     def display_df_daily_note(self):
-        self.df_daily_note, self.df_aily_note_item = google_sheet_manager.read_dynamic_data()
+        self.df_daily_note, self.df_daily_note_item = google_sheet_manager.read_dynamic_data()
         self.df_company, self.df_products = google_sheet_manager.read_static_data()
         self.df_daily_note['Date'] = pd.to_datetime(self.df_daily_note['Date'])
-
+        
         self.df_daily_note['total_amount'] = self.df_daily_note['total_amount'].str.replace('฿', '').str.replace(',', '').astype(float)
         self.df_daily_note['Month'] = self.df_daily_note['Date'].dt.month.astype(str)
         self.df_daily_note['Year'] = self.df_daily_note['Date'].dt.year.astype(str)
@@ -378,14 +184,15 @@ class GoogleSheetGUI:
             total_amount_thai_baht = f"฿{row['total_amount']:,.0f}"
             self.tree.insert('', 'end', values=(row['Year'], row['Month'], total_amount_thai_baht))
 
-    def on_double_click(self, event):
+    def on_double_click_to_doc(self, event):
         # Handle double click event
         item = self.tree.selection()[0]
-        year = self.tree.item(item, "values")[0]
-        month = self.tree.item(item, "values")[1]
-        filtered_data = self.df_daily_note[(self.df_daily_note['Year'] == year) & (self.df_daily_note['Month'] == month)]
+        year_click = self.tree.item(item, "values")[0]
+        month_click = self.tree.item(item, "values")[1]
+
+        filtered_data = self.df_daily_note[(self.df_daily_note['Year'] == year_click) & (self.df_daily_note['Month'] == month_click)]
         new_window = tk.Toplevel(self.master)
-        new_window.title(f"Details for {month}/{year}")
+        new_window.title(f"Details for {month_click}/{year_click}")
 
         # Create and pack widgets
         self.group_tree = ttk.Treeview(new_window, columns=('no_dn', 'Date', 'id_company', 'total_amount'), show='headings', style="Treeview")
@@ -420,7 +227,7 @@ class GoogleSheetGUI:
         df_daily_noted_cleaned = matching_rows.drop(columns=daily_note_drop_list)
 
         customer_rows = self.df_company.loc[self.df_company['id_company'] == id_customer]
-        products_rows = self.df_aily_note_item.loc[self.df_aily_note_item['id_dn'] == id_products]
+        products_rows = self.df_daily_note_item.loc[self.df_daily_note_item['id_dn'] == id_products]
 
         branch_office = customer_rows["branch_office"].values[0]
         df_daily_noted_cleaned["branch_office"] = branch_office
@@ -760,8 +567,12 @@ class GoogleSheetGUI:
         for item in self.tree.get_children():
             self.tree.delete(item)
 
+        for item in self.tabel_invoice.get_children():
+            self.tabel_invoice.delete(item)
+
         # Call the method to display the latest data
         self.display_df_daily_note()
+        self.display_df_invoice()
 
 if __name__ == "__main__":
     root = tk.Tk()

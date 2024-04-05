@@ -24,6 +24,9 @@ class manager_google_sheet_data:
         self.wks_Company = self.sheets.worksheet("Company")
         self.wks_Products = self.sheets.worksheet("Products")
 
+        self.wks_INV = self.sheets.worksheet("INV")
+        self.wks_INV_Items = self.sheets.worksheet("INV_Items")     
+
         self.read_static_data()
 
     def setup_logging(self):
@@ -82,6 +85,19 @@ class manager_google_sheet_data:
 
             return df_daily_note, df_aily_note_item
 
+        except Exception as e:
+            self.logger.error(f"Error reading data from Google Sheets: {e}")
+            raise
+
+    def read_invoice(self):
+        try:
+            raw_data_INV = self.wks_INV.get_all_values()
+            raw_data_INV_Items = self.wks_INV_Items.get_all_values()
+
+            df_invoice = pd.DataFrame(raw_data_INV[1:], columns=raw_data_INV[0])
+            df_invoice_itemes = pd.DataFrame(raw_data_INV_Items[1:], columns=raw_data_INV_Items[0])
+
+            return df_invoice, df_invoice_itemes
         except Exception as e:
             self.logger.error(f"Error reading data from Google Sheets: {e}")
             raise
@@ -145,7 +161,6 @@ class manager_google_sheet_data:
         self.wks_DN.update_cell(number_addnew_row, 6, id_iv)
         self.wks_DN.update_cell(number_addnew_row, 7, id_po)
 
-    
     def add_data_daily_note_items(self, id_dn, id_product, qty, price_unit):
         number_DN_ID_row = len(self.wks_DN_Items.col_values(1))
         number_addnew_row = number_DN_ID_row + 1 
