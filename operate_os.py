@@ -797,7 +797,7 @@ class Opreate_os:
         else:
             pass
 
-    def merge_3_file_order_by(self, po_filename, inv_filename, dn_filename, output_filename):
+    def merge_3_file_order_by(self, po_filename, inv_filename, dn_filename, output_filename,po_enable, inv_enable):
         po_file_path = os.path.join(self.path_po_folder, f"{po_filename}.pdf")
         inv_file_path = os.path.join(self.path_inv_folder, f"{inv_filename}.pdf")
         dn_file_path = os.path.join(self.path_dn_folder, f"{dn_filename}.pdf")
@@ -805,19 +805,65 @@ class Opreate_os:
 
         copy_page = []
 
-        with open(inv_file_path, 'rb') as pdf1_file:
-            pdf1_reader = PyPDF2.PdfReader(pdf1_file)
-            pdf1_pages = pdf1_reader.pages
+        if po_enable and inv_enable:
 
-            # Open the second PDF
-            with open(dn_file_path, 'rb') as pdf2_file:
-                pdf2_reader = PyPDF2.PdfReader(pdf2_file)
-                pdf2_pages = pdf2_reader.pages
+            with open(inv_file_path, 'rb') as pdf1_file:
+                pdf1_reader = PyPDF2.PdfReader(pdf1_file)
+                pdf1_pages = pdf1_reader.pages
 
-                # Open the third PDF
-                with open(po_file_path, 'rb') as pdf3_file:
-                    pdf3_reader = PyPDF2.PdfReader(pdf3_file)
-                    pdf3_pages = pdf3_reader.pages
+                # Open the second PDF
+                with open(dn_file_path, 'rb') as pdf2_file:
+                    pdf2_reader = PyPDF2.PdfReader(pdf2_file)
+                    pdf2_pages = pdf2_reader.pages
+
+                    # Open the third PDF
+                    with open(po_file_path, 'rb') as pdf3_file:
+                        pdf3_reader = PyPDF2.PdfReader(pdf3_file)
+                        pdf3_pages = pdf3_reader.pages
+
+                        # Create a new PDF writer
+                        pdf_writer = PyPDF2.PdfWriter()
+
+                        if not len(pdf1_pages) <= 2:
+                            real_inv_page = len(pdf1_pages) // 2
+
+                            running_inv = 1
+                            for page in pdf1_pages:
+                                if running_inv <= real_inv_page:
+                                    pdf_writer.add_page(page)
+                                else:
+                                    copy_page.append(page)
+                                running_inv += 1
+                        else:
+                            pdf_writer.add_page(pdf1_pages[0])
+                            copy_page.append(pdf1_pages[1])
+
+                        for page in pdf2_pages:
+                            pdf_writer.add_page(page)
+                            copy_page.append(page)
+
+                        for page in pdf3_pages:
+                            pdf_writer.add_page(page)
+                            copy_page.append(page)
+
+                        for page_copy in copy_page:
+                            pdf_writer.add_page(page_copy)
+
+
+
+                        # Write the merged PDF to the output file
+                        with open(all_file_path, 'wb') as output_file:
+                            pdf_writer.write(output_file)
+
+        elif not po_enable and inv_enable:
+            with open(inv_file_path, 'rb') as pdf1_file:
+                pdf1_reader = PyPDF2.PdfReader(pdf1_file)
+                pdf1_pages = pdf1_reader.pages
+
+                     # Open the second PDF
+                with open(dn_file_path, 'rb') as pdf2_file:
+                    pdf2_reader = PyPDF2.PdfReader(pdf2_file)
+                    pdf2_pages = pdf2_reader.pages
 
                     # Create a new PDF writer
                     pdf_writer = PyPDF2.PdfWriter()
@@ -840,12 +886,9 @@ class Opreate_os:
                         pdf_writer.add_page(page)
                         copy_page.append(page)
 
-                    for page in pdf3_pages:
-                        pdf_writer.add_page(page)
-                        copy_page.append(page)
 
                     for page_copy in copy_page:
-                        pdf_writer.add_page(page_copy)
+                            pdf_writer.add_page(page_copy)
 
 
 
@@ -853,7 +896,41 @@ class Opreate_os:
                     with open(all_file_path, 'wb') as output_file:
                         pdf_writer.write(output_file)
 
-    def create_sum_invoice(self, file_name, main_data, sub_data):
+        elif  po_enable and not inv_enable:
+            with open(dn_file_path, 'rb') as pdf2_file:
+                    pdf2_reader = PyPDF2.PdfReader(pdf2_file)
+                    pdf2_pages = pdf2_reader.pages
+
+                    # Open the third PDF
+                    with open(po_file_path, 'rb') as pdf3_file:
+                        pdf3_reader = PyPDF2.PdfReader(pdf3_file)
+                        pdf3_pages = pdf3_reader.pages
+
+                        # Create a new PDF writer
+                        pdf_writer = PyPDF2.PdfWriter()
+
+                        for page in pdf2_pages:
+                            pdf_writer.add_page(page)
+                            copy_page.append(page)
+
+                        for page in pdf3_pages:
+                            pdf_writer.add_page(page)
+                            copy_page.append(page)
+
+                        for page_copy in copy_page:
+                            pdf_writer.add_page(page_copy)
+
+
+
+                        # Write the merged PDF to the output file
+                        with open(all_file_path, 'wb') as output_file:
+                            pdf_writer.write(output_file)
+        else:
+            pass
+
+    def create_sum_invoice(self, file_name, main_data, sub_data ):
+
+        
 
         def one_page_invoice(filename, main, sub):
             file_path = os.path.join(self.path_sum_invoice, f"{filename}_inv.pdf")
@@ -920,7 +997,7 @@ class Opreate_os:
             number = 1
             for index, row in sub.iterrows():
                 Number.append(number)
-                delivery_note.append(row.get("no_dn", ""))
+                delivery_note.append(row.get("id_inv_y", ""))
                 description.append("Nama Pudding & Cheese cake can")
                 qty.append(row.get("qty", ""))
                 unit.append("Bottle")
@@ -1089,7 +1166,7 @@ class Opreate_os:
             number = 1
             for index, row in sub.iterrows():
                 Number.append(number)
-                delivery_note.append(row.get("no_dn", ""))
+                delivery_note.append(row.get("id_inv_y", ""))
                 description.append("Nama Pudding & Cheese cake can")
                 qty.append(row.get("qty", ""))
                 unit.append("Bottle")
@@ -1254,7 +1331,7 @@ class Opreate_os:
             number = 1
             for index, row in sub.iterrows():
                 Number.append(number)
-                delivery_note.append(row.get("no_dn", ""))
+                delivery_note.append(row.get("id_inv_y", ""))
                 description.append("Nama Pudding & Cheese cake can")
                 qty.append(row.get("qty", ""))
                 unit.append("Bottle")
@@ -1416,7 +1493,7 @@ class Opreate_os:
             number = 1
             for index, row in sub.iterrows():
                 Number.append(number)
-                delivery_note.append(row.get("no_dn", ""))
+                delivery_note.append(row.get("id_inv_y", ""))
                 description.append("Nama Pudding & Cheese cake can")
                 qty.append(row.get("qty", ""))
                 unit.append("Bottle")
@@ -1581,7 +1658,7 @@ class Opreate_os:
             number = 1
             for index, row in sub.iterrows():
                 Number.append(number)
-                delivery_note.append(row.get("no_dn", ""))
+                delivery_note.append(row.get("id_inv_y", ""))
                 description.append("Nama Pudding & Cheese cake can")
                 qty.append(row.get("qty", ""))
                 unit.append("Bottle")
@@ -1743,7 +1820,7 @@ class Opreate_os:
             number = 1
             for index, row in sub.iterrows():
                 Number.append(number)
-                delivery_note.append(row.get("no_dn", ""))
+                delivery_note.append(row.get("id_inv_y", ""))
                 description.append("Nama Pudding & Cheese cake can")
                 qty.append(row.get("qty", ""))
                 unit.append("Bottle")
@@ -1908,7 +1985,7 @@ class Opreate_os:
             number = 1
             for index, row in sub.iterrows():
                 Number.append(number)
-                delivery_note.append(row.get("no_dn", ""))
+                delivery_note.append(row.get("id_inv_y", ""))
                 description.append("Nama Pudding & Cheese cake can")
                 qty.append(row.get("qty", ""))
                 unit.append("Bottle")
@@ -2066,7 +2143,7 @@ class Opreate_os:
             number = 1
             for index, row in sub.iterrows():
                 Number.append(number)
-                delivery_note.append(row.get("no_dn", ""))
+                delivery_note.append(row.get("id_inv_y", ""))
                 description.append("Nama Pudding & Cheese cake can")
                 qty.append(row.get("qty", ""))
                 unit.append("Bottle")
@@ -2228,7 +2305,7 @@ class Opreate_os:
             number = 1
             for index, row in sub.iterrows():
                 Number.append(number)
-                delivery_note.append(row.get("no_dn", ""))
+                delivery_note.append(row.get("id_inv_y", ""))
                 description.append("Nama Pudding & Cheese cake can")
                 qty.append(row.get("qty", ""))
                 unit.append("Bottle")
@@ -2393,7 +2470,7 @@ class Opreate_os:
             number = 1
             for index, row in sub.iterrows():
                 Number.append(number)
-                delivery_note.append(row.get("no_dn", ""))
+                delivery_note.append(row.get("id_inv_y", ""))
                 description.append("Nama Pudding & Cheese cake can")
                 qty.append(row.get("qty", ""))
                 unit.append("Bottle")
@@ -2551,7 +2628,7 @@ class Opreate_os:
             number = 1
             for index, row in sub.iterrows():
                 Number.append(number)
-                delivery_note.append(row.get("no_dn", ""))
+                delivery_note.append(row.get("id_inv_y", ""))
                 description.append("Nama Pudding & Cheese cake can")
                 qty.append(row.get("qty", ""))
                 unit.append("Bottle")
@@ -2713,7 +2790,7 @@ class Opreate_os:
             number = 1
             for index, row in sub.iterrows():
                 Number.append(number)
-                delivery_note.append(row.get("no_dn", ""))
+                delivery_note.append(row.get("id_inv_y", ""))
                 description.append("Nama Pudding & Cheese cake can")
                 qty.append(row.get("qty", ""))
                 unit.append("Bottle")

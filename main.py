@@ -8,7 +8,7 @@ from tkcalendar import Calendar
 from tkinter import messagebox
 import tkinter.filedialog
 from bahttext import bahttext
-
+import numpy as np
 locale.setlocale(locale.LC_ALL, 'th_TH')
 class GoogleSheetGUI:
 
@@ -172,9 +172,13 @@ class GoogleSheetGUI:
     def display_df_daily_note(self):
         self.df_daily_note, self.df_daily_note_item = google_sheet_manager.read_dynamic_data()
         self.df_company, self.df_products = google_sheet_manager.read_static_data()
-        self.df_daily_note['Date'] = pd.to_datetime(self.df_daily_note['Date'])
+        self.df_daily_note = self.df_daily_note.dropna(subset=['id_dn'])
+        self.df_daily_note = self.df_daily_note[self.df_daily_note['id_dn'] != '']
         
+        self.df_daily_note['Date'] = pd.to_datetime(self.df_daily_note['Date'])
         self.df_daily_note['total_amount'] = self.df_daily_note['total_amount'].str.replace('฿', '').str.replace(',', '').astype(float)
+        
+
         self.df_daily_note['Month'] = self.df_daily_note['Date'].dt.month.astype(str)
         self.df_daily_note['Year'] = self.df_daily_note['Date'].dt.year.astype(str)
         
@@ -468,13 +472,16 @@ class GoogleSheetGUI:
             open_sum_button.config(state=tk.DISABLED)
             delete_sum_button.config(state=tk.DISABLED)
 
-        def create_dn(file_name,data, date_text, image_list):
+        def create_dn(file_name,data, date_text, image_list, po_filename, inv_filename):
             opreate_os.create_delivery_note_pdf(file_name,data, date_text, image_list)
             open_daily_button.config(state=tk.NORMAL)
             delete_daily_button.config(state=tk.NORMAL)
+            chk_file(po_filename, inv_filename, file_name)
 
         def merge_pdf(po_filename, inv_filename, dn_filename, output_filename):
-            opreate_os.merge_3_file_order_by(po_filename, inv_filename, dn_filename, output_filename)
+            
+            
+            opreate_os.merge_3_file_order_by(po_filename, inv_filename, dn_filename, output_filename, po_checkbox_var.get(), inv_checkbox_var.get())
             delete_sum_button.config(state=tk.NORMAL)
             open_sum_button.config(state=tk.NORMAL)
 
@@ -501,6 +508,14 @@ class GoogleSheetGUI:
         upload_frame = ttk.Frame(new_window2)
         upload_frame.grid(row=4, column=0, pady=5)
 
+        po_checkbox_var = tk.BooleanVar()
+        po_checkbox = tk.Checkbutton(upload_frame, text="PO", variable=po_checkbox_var)
+        po_checkbox.grid(row=0, column=3, padx=5, pady=5)
+
+        inv_checkbox_var = tk.BooleanVar()
+        inv_checkbox = tk.Checkbutton(upload_frame, text="Inv", variable=inv_checkbox_var)
+        inv_checkbox.grid(row=1, column=3, padx=5, pady=5)
+
         po_file_label = ttk.Label(upload_frame, text="PO file: ")
         po_file_label.grid(row=0, column=0, pady=10)
 
@@ -520,7 +535,7 @@ class GoogleSheetGUI:
         inv_browsw_button.grid(row=1, column=2, padx=5)
 
         upload_button = ttk.Button(upload_frame, text="Upload", command=lambda:upload_file_po_inv(entry_po_file_path.get(), entry_inv_file_path.get(), po_name, inv_name))
-        upload_button.grid(row=1, column=3)
+        upload_button.grid(row=2, column=3)
 
         
 
@@ -530,7 +545,7 @@ class GoogleSheetGUI:
         style.configure("Yellow.TButton", background="#FFD966")
 
 
-        gen_daily_button = ttk.Button(upload_frame, text="Create Daily Note", style="Yellow.TButton", command=lambda:create_dn(dn_name, list_page, Date, id_code))
+        gen_daily_button = ttk.Button(upload_frame, text="Create Daily Note", style="Yellow.TButton", command=lambda:create_dn(dn_name, list_page, Date, id_code, po_name, inv_name))
         gen_daily_button.grid(row=4, column=1, padx=5, pady=5)
 
         open_daily_button = ttk.Button(upload_frame, text="Open Daily Note", style="Green.TButton", command=lambda:open_dn(dn_name))
